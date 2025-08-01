@@ -7,64 +7,62 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
-           
-model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  name         String?
-  passwordHash String         // Store hashed passwords, not plain text
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
 
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   watchEntries WatchEntry[]
   chatMessages ChatMessage[]
 }
 
 model Movie {
-  id          String   @id @default(cuid())
-  title       String
-  year        Int?
-  imdbId      String?  @unique(map: "Movie_imdbId_key") // Make imdbId unique for easier upserts
-  tmdbId      Int?     @unique(map: "Movie_tmdbId_key") // Make tmdbId unique
-  poster      String?
-  genre       Json // Changed from String[] to Json for compatibility
-  director    String?
-  actors      Json // Changed from String[] to Json for compatibility
-  plot        String?
-  runtime     Int?
-  imdbRating  Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String
+  year        Int?
+  imdbId      String?  @unique(map: "Movie_imdbId_key")
+  tmdbId      Int?     @unique(map: "Movie_tmdbId_key")
+  poster      String?
+  genre       Json
+  director    String?
+  actors      Json
+  plot        String?
+  runtime     Int?
+  imdbRating  Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
   watchEntries WatchEntry[]
 }
 
 model WatchEntry {
-  id            String   @id @default(cuid())
-  movieId       String
-  watchDate     DateTime
-  personalRating Int? // Changed from @db.SmallInt to standard Int?
+  id            String   @id @default(cuid())
+  movieId       String
+  watchDate     DateTime
+  personalRating Int?
   personalNotes String?
-  mood          String?
-  location      String?
-  rewatched     Boolean  @default(false)
-  createdAt     DateTime @default(now())
+  mood          String?
+  location      String?
+  rewatched     Boolean  @default(false)
+  createdAt     DateTime @default(now())
   
   movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
   
-  userId         String // Link watch entry to a user
+  userId         String
   user           User           @relation(fields: [userId], references: [id])
   
-  @@unique([movieId, watchDate, userId]) // A user can only watch a specific movie on a specific date once
+  @@unique([movieId, watchDate, userId])
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
-  content   String
-  role      String   // 'user' or 'assistant'
-  context   Json?    // movie context for AI
+  id        String   @id @default(cuid())
+  content   String
+  role      String
+  context   Json?
   createdAt DateTime @default(now())
-
-  userId         String // Link chat message to a user
+  userId         String
   user           User           @relation(fields: [userId], references: [id])
 }
