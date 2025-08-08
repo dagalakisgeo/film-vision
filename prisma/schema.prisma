@@ -8,61 +8,139 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id           Int            @id @default(autoincrement())
-  email        String         @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  watchEntries WatchEntry[]
-  chatMessages ChatMessage[]
-}
+/**
+ * Notes:
+ * Primary keys: Int autoincrement for performance.
+ * External IDs: tmdbId Int?, imdbId String? with unique constraints.
+ * Person is a single table; role-specific join tables link movies to people.
+ * If you add auth later, uncomment User and add userId to WatchEntry.
+ */
 
 model Movie {
-  id          Int      @id @default(autoincrement())
-  title       String
-  year        Int?
-  imdbId      String?  @unique(map: "Movie_imdbId_key")
-  tmdbId      Int?     @unique(map: "Movie_tmdbId_key")
-  poster      String?
-  genre       Json
-  director    String?
-  actors      Json
-  plot        String?
-  runtime     Int?
-  imdbRating  Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  watchEntries WatchEntry[]
+  id         Int      @id @default(autoincrement())
+  title      String
+  year       Int?
+  tmdbId     Int?     @unique
+  imdbId     String?  @unique
+  poster     String?
+  plot       String?
+  runtime    Int?
+  imdbRating Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  genres           MovieGenre[]
+  directors        MovieDirector[]
+  actors           MovieActor[]
+  cinematographers MovieCinematographer[]
+  screenwriters    MovieScreenwriter[]
+  watchEntries     WatchEntry[]
+
+  @@index([year])
+  @@index([title])
 }
+
+model Genre {
+  id     Int          @id @default(autoincrement())
+  name   String       @unique
+  movies MovieGenre[]
+}
+
+model Person {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  asDirector        MovieDirector[]
+  asActor           MovieActor[]
+  asCinematographer MovieCinematographer[]
+  asScreenwriter    MovieScreenwriter[]
+
+  @@index([name])
+}
+
+/**
+ * **
+ * Join tables
+ * **
+ */
+
+model MovieGenre {
+  movieId Int
+  genreId Int
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+  @@index([genreId])
+}
+
+model MovieDirector {
+  movieId  Int
+  personId Int
+
+  movie    Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  director Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, personId])
+  @@index([personId])
+}
+
+model MovieActor {
+  movieId  Int
+  personId Int
+
+  movie Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  actor Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, personId])
+  @@index([personId])
+}
+
+model MovieCinematographer {
+  movieId  Int
+  personId Int
+
+  movie           Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  cinematographer Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, personId])
+  @@index([personId])
+}
+
+model MovieScreenwriter {
+  movieId  Int
+  personId Int
+
+  movie        Movie  @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  screenwriter Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, personId])
+  @@index([personId])
+}
+
+/**
+ * **
+ * Diary entries
+ * **
+ */
 
 model WatchEntry {
   id             Int      @id @default(autoincrement())
+  // userId Int? // add when you introduce users
   movieId        Int
   watchDate      DateTime
-  personalRating Int?
+  personalRating Int?     @db.SmallInt
   personalNotes  String?
   mood           String?
-  cinema         Boolean  @default(false)
+  location       String?
   rewatched      Boolean  @default(false)
   createdAt      DateTime @default(now())
-  
-  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
-  
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
-  
-  @@unique([movieId, watchDate, userId])
-}
 
-model ChatMessage {
-  id        Int      @id @default(autoincrement())
-  content   String
-  role      String
-  context   Json?
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  // user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // @@unique([userId, movieId, watchDate]) // enable with multi-user
+
+  @@index([watchDate])
 }
